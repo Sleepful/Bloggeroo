@@ -5,8 +5,13 @@ use glob::glob;
 // use std::path::PathBuf;
 use anyhow::anyhow;
 use anyhow::Error;
+use markdown::to_html_with_options;
+use markdown::Constructs;
+use markdown::Options;
+use markdown::ParseOptions;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::exit;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -35,11 +40,40 @@ fn find_md_files(input_dir: &str) -> Vec<PathBuf> {
         .collect()
 }
 
+// TODO:
+// - read files from dirs
+// - prodce html for each file
+// - write to each file out
+// - get filename properly from...metadata?
+fn produce_html_from_md() {
+    let custom = Constructs {
+        frontmatter: true,
+        ..Constructs::gfm()
+    };
+    let options = Options {
+        parse: ParseOptions {
+            constructs: custom,
+            ..ParseOptions::gfm()
+        },
+        ..Options::gfm()
+    };
+    let md = to_html_with_options(&"blabla"[..], &options);
+
+    println!("md {:#?}!", md);
+}
+
 fn main() {
     let args = Args::parse();
     println!("Hello {}!", args.input_dir);
     println!("Hello {}!", args.output_dir);
-    let files = find_md_files(&args.input_dir[..]);
     // glob
+    let files = find_md_files(&args.input_dir[..]);
+    if let 0 = files.len() {
+        println!("Zero markdown files were found.");
+        exit(1)
+    }
+    println!("files {:#?}!", files);
     // markdown rs
+    produce_html_from_md()
+    // tera
 }
