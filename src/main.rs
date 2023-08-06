@@ -42,11 +42,6 @@ fn find_md_files(input_dir: &str) -> Vec<PathBuf> {
         .collect()
 }
 
-// TODO:
-// - read files from dirs
-// - prodce html for each file
-// - write to each file out
-// - get filename properly from...metadata?
 #[derive(Debug)]
 enum ParseMd {
     Result((markdown::mdast::Node, std::string::String)),
@@ -63,8 +58,9 @@ fn get_frontmatter_value(ast: &markdown::mdast::Node) -> Option<String> {
 fn article_yaml(value: &String, match_on: &str) -> Option<String> {
     let re_string = format!(r"[n]?{}:\s+(.+)[n]?", match_on);
     let re = Regex::new(&re_string).unwrap();
+    // re.captures()?[0] contains the matched string
+    // re.captures()?[1] contains the capture group
     let publish = re.captures(value)?[1].to_string();
-    // println!("captures {:?}", re.captures(value)?);
     Some(publish)
 }
 
@@ -88,7 +84,12 @@ struct Article {
     date: String,
     publish: bool,
     html: String,
-    dir: PathBuf,
+    input_dir: PathBuf,
+}
+
+struct WrittenArticle {
+    article: Article,
+    file_path: PathBuf,
 }
 
 fn create_article(dir: PathBuf) -> Option<Article> {
@@ -105,12 +106,29 @@ fn create_article(dir: PathBuf) -> Option<Article> {
         publish,
         title,
         html,
-        dir,
+        input_dir: dir,
     })
 }
 
 // will write it if all the YAML fns return Ok()
-fn write_html(ast: &markdown::mdast::Node, out_dir: String) {}
+fn write_html(article: Article, out_dir: &str) -> Result<WrittenArticle, Error> {
+    if let true = article.publish {
+        let file_name = format!("{}.html", article.uuid);
+        let mut path = PathBuf::new();
+        path.push(out_dir);
+        path.push("articles");
+        std::fs::create_dir(&path)?;
+        path.push(file_name);
+        std::fs::write(&path, &article.html)?;
+        let w = WrittenArticle {
+            article,
+            file_path: path,
+        };
+        Ok(w)
+    } else {
+        Err(anyhow!(format!("Could not write file {}", article.uuid)))
+    }
+}
 
 fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
     let custom = || Constructs {
@@ -128,11 +146,6 @@ fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
         ..Options::gfm()
     };
     let ast = to_mdast(md, &(parse_options()))?;
-    // let fm = get_frontmatter_value(&ast).ok_or("eh")?;
-    // println!("frontmatter: {:?}", fm);
-    // let date = article_date(&fm);
-    // let date = article_yaml(&fm, "date");
-    // println!("date: {:?}", date);
     let html = to_html_with_options(md, &(options()))?;
     Ok(ParseMd::Result((ast, html)))
 }
@@ -142,7 +155,7 @@ fn main() {
     println!("Hello {}!", args.input_dir);
     println!("Hello {}!", args.output_dir);
     // glob
-    let files = find_md_files(&args.input_dir[..]);
+    let files = find_md_files(&args.input_dir);
     if files.is_empty() {
         println!("Zero markdown files were found.");
         exit(1)
@@ -150,16 +163,20 @@ fn main() {
     println!("files {:#?}!", files);
     // markdown rs
     // read files to memory
-    let htmls: Vec<Article> = files.into_iter().flat_map(|f| create_article(f)).collect();
+    let htmls: Vec<WrittenArticle> = files
+        .into_iter()
+        .flat_map(|f| {
+            let art = create_article(f).ok_or(anyhow!("Create article fail"))?;
+            write_html(art, &args.output_dir)
+        })
+        .collect();
 
-    // let html = produce_html_from_md(&"blabla"[..]);
-    // write files to output dir
     println!(
         "titles: {:?}",
         htmls
             .into_iter()
-            .map(|a| -> String { a.title })
-            .collect::<String>()
+            .map(|a| -> PathBuf { a.file_path })
+            .collect::<PathBuf>()
     )
     // tera
 }
