@@ -4,8 +4,9 @@ use glob::glob;
 // use std::env::current_dir;
 // use std::path::PathBuf;
 use anyhow::anyhow;
-use anyhow::Error;
+use anyhow::{Error, Result};
 use markdown::to_html_with_options;
+use markdown::to_mdast;
 use markdown::Constructs;
 use markdown::Options;
 use markdown::ParseOptions;
@@ -45,21 +46,42 @@ fn find_md_files(input_dir: &str) -> Vec<PathBuf> {
 // - prodce html for each file
 // - write to each file out
 // - get filename properly from...metadata?
-fn produce_html_from_md() {
-    let custom = Constructs {
+#[derive(Debug)]
+enum ParseMd {
+    Result((markdown::mdast::Node, std::string::String)),
+}
+
+fn article_publish(ast: &markdown::mdast::Node) -> String {
+    String::new()
+}
+fn article_uuid(ast: &markdown::mdast::Node) -> String {
+    String::new()
+}
+fn article_date(ast: &markdown::mdast::Node) -> String {
+    String::new()
+}
+
+// will write it if all the YAML fns return Ok()
+fn write_html(ast: &markdown::mdast::Node, out_dir: String) {}
+
+fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
+    let custom = || Constructs {
         frontmatter: true,
         ..Constructs::gfm()
     };
-    let options = Options {
-        parse: ParseOptions {
-            constructs: custom,
+    let parse_options = || {
+        return ParseOptions {
+            constructs: custom(),
             ..ParseOptions::gfm()
-        },
+        };
+    };
+    let options = || Options {
+        parse: parse_options(),
         ..Options::gfm()
     };
-    let md = to_html_with_options(&"blabla"[..], &options);
-
-    println!("md {:#?}!", md);
+    let ast = to_mdast(md, &(parse_options()))?;
+    let html = to_html_with_options(md, &(options()))?;
+    Ok(ParseMd::Result((ast, html)))
 }
 
 fn main() {
@@ -68,12 +90,24 @@ fn main() {
     println!("Hello {}!", args.output_dir);
     // glob
     let files = find_md_files(&args.input_dir[..]);
-    if let 0 = files.len() {
+    if files.is_empty() {
         println!("Zero markdown files were found.");
         exit(1)
     }
     println!("files {:#?}!", files);
     // markdown rs
-    produce_html_from_md()
+    // read files to memory
+    let htmls: Vec<(PathBuf, ParseMd)> = files
+        .into_iter()
+        .flat_map(|f| -> Result<(PathBuf, String), Error> {
+            let s = std::fs::read_to_string(f.clone())?;
+            Ok((f, s))
+        })
+        .flat_map(|(f, s)| -> Result<(PathBuf, ParseMd), String> { Ok((f, parse_md(&s[..])?)) })
+        .collect();
+
+    // let html = produce_html_from_md(&"blabla"[..]);
+    // write files to output dir
+    println!("{:?}", htmls)
     // tera
 }
