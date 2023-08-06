@@ -1,6 +1,7 @@
 // use clap::{builder::IntoResettable, Parser};
 use clap::Parser;
 use glob::glob;
+use regex::Regex;
 // use std::env::current_dir;
 // use std::path::PathBuf;
 use anyhow::anyhow;
@@ -51,14 +52,61 @@ enum ParseMd {
     Result((markdown::mdast::Node, std::string::String)),
 }
 
-fn article_publish(ast: &markdown::mdast::Node) -> String {
-    String::new()
+fn get_frontmatter_value(ast: &markdown::mdast::Node) -> Option<String> {
+    // frontmatter should always be at the front[0]
+    match &ast.children()?[0] {
+        markdown::mdast::Node::Yaml(yaml) => Some(yaml.value.clone()),
+        _ => return None,
+    }
 }
-fn article_uuid(ast: &markdown::mdast::Node) -> String {
-    String::new()
+
+fn article_yaml(value: &String, match_on: &str) -> Option<String> {
+    let re_string = format!(r"[n]?{}:\s+(.+)[n]?", match_on);
+    let re = Regex::new(&re_string).unwrap();
+    let publish = re.captures(value)?[1].to_string();
+    // println!("captures {:?}", re.captures(value)?);
+    Some(publish)
 }
-fn article_date(ast: &markdown::mdast::Node) -> String {
-    String::new()
+
+fn article_publish(fm_string: &String) -> Option<String> {
+    article_yaml(fm_string, "publish")
+}
+fn article_uuid(fm_string: &String) -> Option<String> {
+    article_yaml(fm_string, "uuid")
+}
+fn article_date(fm_string: &String) -> Option<String> {
+    article_yaml(fm_string, "date")
+}
+
+fn article_title(fm_string: &String) -> Option<String> {
+    article_yaml(fm_string, "title")
+}
+
+struct Article {
+    title: String,
+    uuid: String,
+    date: String,
+    publish: bool,
+    html: String,
+    dir: PathBuf,
+}
+
+fn create_article(dir: PathBuf) -> Option<Article> {
+    let md = std::fs::read_to_string(dir.clone()).ok()?;
+    let ParseMd::Result((ast, html)) = parse_md(&md[..]).ok()?;
+    let fm = get_frontmatter_value(&ast)?;
+    let date = article_date(&fm)?;
+    let uuid = article_uuid(&fm)?;
+    let title = article_title(&fm)?;
+    let publish = article_publish(&fm)? == "true";
+    Some(Article {
+        uuid,
+        date,
+        publish,
+        title,
+        html,
+        dir,
+    })
 }
 
 // will write it if all the YAML fns return Ok()
@@ -80,6 +128,11 @@ fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
         ..Options::gfm()
     };
     let ast = to_mdast(md, &(parse_options()))?;
+    // let fm = get_frontmatter_value(&ast).ok_or("eh")?;
+    // println!("frontmatter: {:?}", fm);
+    // let date = article_date(&fm);
+    // let date = article_yaml(&fm, "date");
+    // println!("date: {:?}", date);
     let html = to_html_with_options(md, &(options()))?;
     Ok(ParseMd::Result((ast, html)))
 }
@@ -97,17 +150,16 @@ fn main() {
     println!("files {:#?}!", files);
     // markdown rs
     // read files to memory
-    let htmls: Vec<(PathBuf, ParseMd)> = files
-        .into_iter()
-        .flat_map(|f| -> Result<(PathBuf, String), Error> {
-            let s = std::fs::read_to_string(f.clone())?;
-            Ok((f, s))
-        })
-        .flat_map(|(f, s)| -> Result<(PathBuf, ParseMd), String> { Ok((f, parse_md(&s[..])?)) })
-        .collect();
+    let htmls: Vec<Article> = files.into_iter().flat_map(|f| create_article(f)).collect();
 
     // let html = produce_html_from_md(&"blabla"[..]);
     // write files to output dir
-    println!("{:?}", htmls)
+    println!(
+        "titles: {:?}",
+        htmls
+            .into_iter()
+            .map(|a| -> String { a.title })
+            .collect::<String>()
+    )
     // tera
 }
