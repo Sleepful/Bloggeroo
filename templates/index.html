@@ -11,9 +11,13 @@
     <p class="important">
       Welcome world, I mean hello globe, or uh, salutations, world.
     </p>
+  <h2> Blog posts </h2>
   {% for article in articles %}
-    <h2> {{article.title}} </h2>
-    <p>{{article.date}}</p>
-    <a href="./articles/{{article.uuid}}.html">{{ article.title }}</a>
+    <ul>
+      <li>
+        <p>{{article.pretty_date}}: <a href="./articles/{{article.uuid}}.html">{{ article.title }}</a>
+        </p>
+      </li>
+    <ul>
   {% endfor %}
 {% endblock content %}

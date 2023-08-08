@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block home_link %}<a href="../index.html">Home</a></div>{% endblock home_lin %}
 {% block title %}{{ article.title }}{% endblock title %}
 {% block head %}
     {{ super() }}
@@ -8,6 +9,10 @@
 {% endblock head %}
 {% block content %}
   <h1>{{ article.title }}</h1>
+  <p> {{ article.pretty_date }}</p>
   <hr>
   {{ article.html | safe }}
+  <hr>
+  <a href="#">Go back to the top</a>
+  <hr>
 {% endblock content %}

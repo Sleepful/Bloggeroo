@@ -1,6 +1,7 @@
 // use clap::{builder::IntoResettable, Parser};
 #[macro_use]
 extern crate lazy_static;
+use chrono::NaiveDateTime;
 use clap::Parser;
 use glob::glob;
 use regex::Regex;
@@ -91,6 +92,7 @@ struct Written {
 struct Article {
     title: String,
     uuid: String,
+    pretty_date: String,
     date: String,
     publish: bool,
     html: String,
@@ -112,17 +114,23 @@ struct WrittenArticle {
     file_path: PathBuf,
 }
 
-fn create_article(dir: PathBuf) -> Option<Article> {
-    let md = std::fs::read_to_string(dir.clone()).ok()?;
-    let ParseMd::Result((ast, html)) = parse_md(&md[..]).ok()?;
-    let fm = get_frontmatter_value(&ast)?;
-    let date = article_date(&fm)?;
-    let uuid = article_uuid(&fm)?;
-    let title = article_title(&fm)?;
-    let publish = article_publish(&fm)? == "true";
-    Some(Article {
+fn create_article(dir: PathBuf) -> Result<Article, Error> {
+    let md = std::fs::read_to_string(dir.clone())?;
+    let ParseMd::Result((ast, html)) = parse_md(&md[..]).expect("parsemd failed");
+    let fm = get_frontmatter_value(&ast).unwrap();
+    let date = article_date(&fm).unwrap();
+    let uuid = article_uuid(&fm).unwrap();
+    let title = article_title(&fm).unwrap();
+    let publish = article_publish(&fm).unwrap_or_default() == "true";
+    println!("a {}", &date);
+    let pretty_date = NaiveDateTime::parse_from_str(&format!("{} 00:00:00", &date), "%Y-%m-%d %T")
+        .unwrap_or_default()
+        .format("%Y, %B %e")
+        .to_string();
+    Ok(Article {
         uuid,
         date,
+        pretty_date,
         publish,
         title,
         html,
@@ -242,7 +250,7 @@ fn main() {
     let articles: Vec<Article> = files
         .into_iter()
         .flat_map(|f| {
-            let art = create_article(f).ok_or(anyhow!("Create article fail"))?;
+            let art = create_article(f).expect("Create article fail");
             let art = write_article(art, &args.output_dir);
             art
         })
