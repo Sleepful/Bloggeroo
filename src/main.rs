@@ -1,7 +1,11 @@
 // use clap::{builder::IntoResettable, Parser};
+#[macro_use]
+extern crate lazy_static;
 use clap::Parser;
 use glob::glob;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use tera::Tera;
 // use std::env::current_dir;
 // use std::path::PathBuf;
 use anyhow::anyhow;
@@ -78,6 +82,12 @@ fn article_title(fm_string: &String) -> Option<String> {
     article_yaml(fm_string, "title")
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct Written {
+    file_path: PathBuf,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 struct Article {
     title: String,
     uuid: String,
@@ -85,6 +95,16 @@ struct Article {
     publish: bool,
     html: String,
     input_dir: PathBuf,
+    written: Option<Written>,
+}
+
+enum Post {
+    Article,
+    WrittenArticle,
+}
+
+struct Index {
+    articles: Vec<Article>,
 }
 
 struct WrittenArticle {
@@ -107,24 +127,80 @@ fn create_article(dir: PathBuf) -> Option<Article> {
         title,
         html,
         input_dir: dir,
+        written: None,
     })
 }
 
+lazy_static! {
+    pub static ref TEMPLATES: Tera = parse_tera();
+}
+
+fn parse_tera() -> Tera {
+    match Tera::new("templates/**/*.html") {
+        Ok(tera) => tera,
+        Err(e) => {
+            println!("Parsing error(s): {}", e);
+            ::std::process::exit(1);
+        }
+    }
+}
+
+fn build_article_context(art: &Article) -> tera::Context {
+    let mut context = tera::Context::new();
+    context.insert("article", art);
+    context
+}
+
+fn build_index_context(idx: &Index) -> tera::Context {
+    let mut context = tera::Context::new();
+    context.insert("articles", &idx.articles);
+    context
+}
+
+fn render_template(template: &str, ctx: tera::Context) -> Result<String, Error> {
+    let rendered = TEMPLATES.render(template, &ctx)?;
+    Ok(rendered)
+}
+
+fn render_article_template(ctx: tera::Context) -> Result<String, Error> {
+    let html = render_template("article.html", ctx)?;
+    Ok(html)
+}
+
+fn render_index_template(ctx: tera::Context) -> Result<String, Error> {
+    let html = render_template("index.html", ctx)?;
+    Ok(html)
+}
+
+fn write_index(index: &Index, out_dir: &str) -> Result<PathBuf, Error> {
+    let file_name = "index.html";
+    let mut path = PathBuf::new();
+    path.push(out_dir);
+    path.push("html");
+    path.push(file_name);
+    let ctx = build_index_context(&index);
+    let html = render_index_template(ctx)?;
+    std::fs::write(&path, &html)?;
+    Ok(path)
+}
+
 // will write it if all the YAML fns return Ok()
-fn write_html(article: Article, out_dir: &str) -> Result<WrittenArticle, Error> {
+fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> {
     if let true = article.publish {
+        println!("printdebug!");
         let file_name = format!("{}.html", article.uuid);
         let mut path = PathBuf::new();
         path.push(out_dir);
+        path.push("html");
         path.push("articles");
-        std::fs::create_dir(&path)?;
+        std::fs::create_dir_all(&path).expect("Failed creating html dirs");
         path.push(file_name);
-        std::fs::write(&path, &article.html)?;
-        let w = WrittenArticle {
-            article,
-            file_path: path,
-        };
-        Ok(w)
+        let ctx = build_article_context(&article);
+        let html = render_article_template(ctx).expect("Could not render article template");
+        // std::fs::write(&path, &article.html)?;
+        std::fs::write(&path, &html)?;
+        article.written = Some(Written { file_path: path });
+        Ok(article)
     } else {
         Err(anyhow!(format!("Could not write file {}", article.uuid)))
     }
@@ -163,19 +239,23 @@ fn main() {
     println!("files {:#?}!", files);
     // markdown rs
     // read files to memory
-    let htmls: Vec<WrittenArticle> = files
+    let articles: Vec<Article> = files
         .into_iter()
         .flat_map(|f| {
             let art = create_article(f).ok_or(anyhow!("Create article fail"))?;
-            write_html(art, &args.output_dir)
+            let art = write_article(art, &args.output_dir);
+            art
         })
         .collect();
+    let index = Index { articles };
+    write_index(&index, &args.output_dir).expect("Could not write index.html");
 
     println!(
         "titles: {:?}",
-        htmls
+        index
+            .articles
             .into_iter()
-            .map(|a| -> PathBuf { a.file_path })
+            .map(|a| -> PathBuf { a.written.unwrap().file_path })
             .collect::<PathBuf>()
     )
     // tera
