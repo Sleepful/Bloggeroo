@@ -18,3 +18,7 @@ Cargo.lock
 
 /target
 html
+node_modules
+
+# Local Netlify folder
+.netlify

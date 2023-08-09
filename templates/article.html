@@ -1,18 +1,110 @@
-{% extends "base.html" %}
-{% block home_link %}<a href="../index.html">Home</a></div>{% endblock home_lin %}
-{% block title %}{{ article.title }}{% endblock title %}
-{% block head %}
-    {{ super() }}
-    <style type="text/css">
-        .important { color: #336699; }
-    </style>
-{% endblock head %}
-{% block content %}
-  <h1>{{ article.title }}</h1>
-  <p> {{ article.pretty_date }}</p>
-  <hr>
-  {{ article.html | safe }}
-  <hr>
-  <a href="#">Go back to the top</a>
-  <hr>
+{% extends "base.html" %} {% block home_link %}{{ super() }}{% endblock
+home_link %} {% block home_href %}../index.html{% endblock home_href %} {% block
+title %}{{ article.title }}{% endblock title %} {% block head %} {{ super() }}
+<link rel="stylesheet" href="../styles.css" />
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/default.min.css"
+/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+
+<script>
+  hljs.highlightAll()
+</script>
+{% endblock head %} {% block content %}
+<h1>{{ article.title }}</h1>
+<p>{{ article.pretty_date }}</p>
+<hr />
+{{ article.html | safe }}
+<hr />
+
+<!-- START OF MAILCHIMP EMBED -->
+<div id="mc_embed_shell">
+  <div id="mc_embed_signup" class="card border-secondary border-dashed border-2 p-4 bg-base-200">
+    <form
+      action="https://gmail.us12.list-manage.com/subscribe/post?u=210d35b89fe45702bc83c1b78&amp;id=00684b5bb6&amp;f_id=00f946e0f0"
+      method="post"
+      id="mc-embedded-subscribe-form"
+      name="mc-embedded-subscribe-form"
+      class="validate"
+      target="_blank"
+    >
+      <div id="mc_embed_signup_scroll" class="space-y-4">
+        <h2 class="mt-4">Subscribe to my mailing list</h2>
+        <p>Only to update you when I submit a new blog post.</p>
+        <div class="mc-field-group">
+          <input
+            type="email"
+            name="EMAIL"
+            class="input p-4 border-base-300 border-solid border-2"
+            id="mce-EMAIL"
+            required=""
+            value=""
+            placeholder="Email address"
+          /><span id="mce-EMAIL-HELPERTEXT" class="helper_text"></span>
+        </div>
+        <div id="mce-responses" class="clear foot">
+          <div
+            class="response"
+            id="mce-error-response"
+            style="display: none"
+          ></div>
+          <div
+            class="response"
+            id="mce-success-response"
+            style="display: none"
+          ></div>
+        </div>
+        <div style="position: absolute; left: -5000px" aria-hidden="true">
+          /* real people should not fill this in and expect good things - do not
+          remove this or risk form bot signups */
+          <input
+            type="text"
+            name="b_210d35b89fe45702bc83c1b78_00684b5bb6"
+            tabindex="-1"
+            value=""
+          />
+        </div>
+        <div class="optionalParent">
+          <div class="clear foot">
+            <input
+              type="submit"
+              name="subscribe"
+              id="mc-embedded-subscribe"
+              class="btn border-2 border-base-300"
+              value="Subscribe"
+            />
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+  <script
+    type="text/javascript"
+    src="//s3.amazonaws.com/downloads.mailchimp.com/js/mc-validate.js"
+  ></script>
+  <script type="text/javascript">
+    ;(function ($) {
+      window.fnames = new Array()
+      window.ftypes = new Array()
+      fnames[0] = 'EMAIL'
+      ftypes[0] = 'email'
+      fnames[1] = 'FNAME'
+      ftypes[1] = 'text'
+      fnames[2] = 'LNAME'
+      ftypes[2] = 'text'
+      fnames[3] = 'ADDRESS'
+      ftypes[3] = 'address'
+      fnames[4] = 'PHONE'
+      ftypes[4] = 'phone'
+      fnames[5] = 'BIRTHDAY'
+      ftypes[5] = 'birthday'
+    })(jQuery)
+    var $mcj = jQuery.noConflict(true)
+  </script>
+</div>
+<!-- END OF MAILCHIMP EMBED -->
+<hr />
+<a href="#">Go back to the top</a>
+<hr />
 {% endblock content %}

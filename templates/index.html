@@ -1,23 +1,21 @@
-{% extends "base.html" %}
-{% block title %}Index{% endblock title %}
-{% block head %}
-    {{ super() }}
-    <style type="text/css">
-        .important { color: #336699; }
-    </style>
-{% endblock head %}
-{% block content %}
-    <h1>Bloggeroo</h1>
-    <p class="important">
-      Welcome world, I mean hello globe, or uh, salutations, world.
+{% extends "base.html" %} {% block title %}Index{% endblock title %} {% block
+head %} {{ super() }} {% endblock head %} {% block content %}
+<h1>Bloggeroo</h1>
+<p class="italic">“Time moves slowly, but goes by quickly.”</p>
+<p class="italic">
+  “What is reality? Obviously, no one can say, because it isn’t words.”
+</p>
+<h2>Blog posts</h2>
+<ul>
+  {% for article in articles | sort(attribute="date") | reverse %}
+  <li>
+    <p>
+      {{article.pretty_date}}:
+      <a href="./articles/{{article.uuid}}.html">{{ article.title }}</a>
     </p>
-  <h2> Blog posts </h2>
-  {% for article in articles %}
-    <ul>
-      <li>
-        <p>{{article.pretty_date}}: <a href="./articles/{{article.uuid}}.html">{{ article.title }}</a>
-        </p>
-      </li>
-    <ul>
+  </li>
   {% endfor %}
-{% endblock content %}
+  <ul>
+    {% endblock content %}
+  </ul>
+</ul>

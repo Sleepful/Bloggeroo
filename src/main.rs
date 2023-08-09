@@ -1,24 +1,21 @@
 // use clap::{builder::IntoResettable, Parser};
 #[macro_use]
 extern crate lazy_static;
+use anyhow::anyhow;
+use anyhow::{Error, Result};
 use chrono::NaiveDateTime;
 use clap::Parser;
 use glob::glob;
-use regex::Regex;
-use serde::{Deserialize, Serialize};
-use tera::Tera;
-// use std::env::current_dir;
-// use std::path::PathBuf;
-use anyhow::anyhow;
-use anyhow::{Error, Result};
 use markdown::to_html_with_options;
 use markdown::to_mdast;
 use markdown::Constructs;
 use markdown::Options;
 use markdown::ParseOptions;
-use std::path::Path;
+use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::exit;
+use tera::Tera;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -100,18 +97,8 @@ struct Article {
     written: Option<Written>,
 }
 
-enum Post {
-    Article,
-    WrittenArticle,
-}
-
 struct Index {
     articles: Vec<Article>,
-}
-
-struct WrittenArticle {
-    article: Article,
-    file_path: PathBuf,
 }
 
 fn create_article(dir: PathBuf) -> Result<Article, Error> {
@@ -122,7 +109,6 @@ fn create_article(dir: PathBuf) -> Result<Article, Error> {
     let uuid = article_uuid(&fm).unwrap();
     let title = article_title(&fm).unwrap();
     let publish = article_publish(&fm).unwrap_or_default() == "true";
-    println!("a {}", &date);
     let pretty_date = NaiveDateTime::parse_from_str(&format!("{} 00:00:00", &date), "%Y-%m-%d %T")
         .unwrap_or_default()
         .format("%Y, %B %e")
@@ -195,7 +181,6 @@ fn write_index(index: &Index, out_dir: &str) -> Result<PathBuf, Error> {
 // will write it if all the YAML fns return Ok()
 fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> {
     if let true = article.publish {
-        println!("printdebug!");
         let file_name = format!("{}.html", article.uuid);
         let mut path = PathBuf::new();
         path.push(out_dir);
@@ -236,21 +221,19 @@ fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
 
 fn main() {
     let args = Args::parse();
-    println!("Hello {}!", args.input_dir);
-    println!("Hello {}!", args.output_dir);
     // glob
     let files = find_md_files(&args.input_dir);
     if files.is_empty() {
         println!("Zero markdown files were found.");
         exit(1)
     }
-    println!("files {:#?}!", files);
-    // markdown rs
-    // read files to memory
+    println!("Files found:\n {:#?}", files);
     let articles: Vec<Article> = files
         .into_iter()
         .flat_map(|f| {
+            // read file to memory
             let art = create_article(f).expect("Create article fail");
+            // and write it with tera templates
             let art = write_article(art, &args.output_dir);
             art
         })
@@ -259,12 +242,11 @@ fn main() {
     write_index(&index, &args.output_dir).expect("Could not write index.html");
 
     println!(
-        "titles: {:?}",
+        "Articles created:\n {:?}",
         index
             .articles
             .into_iter()
             .map(|a| -> PathBuf { a.written.unwrap().file_path })
             .collect::<PathBuf>()
     )
-    // tera
 }
