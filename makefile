@@ -13,3 +13,4 @@ netlify:
 	# requires running `npx netlify login`
 netlify-prod:
 	npx netlify deploy --prod --dir=html
+send: html netlify-prod
