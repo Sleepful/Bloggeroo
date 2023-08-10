@@ -6,10 +6,11 @@
     <title>{% block title %}{% endblock title %} - Bloggeroo</title>
     <link rel="stylesheet" href="styles.css" />
     {% endblock head %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body>
     <div class="grid grid-cols-12">
-      <div class="lg:col-span-2 md:col-span-1 sm:hide"></div>
+      <div class="lg:col-span-2 md:col-span-1 max-sm:hidden"></div>
       <div class="lg:col-span-8 md:col-span-10 col-span-full px-2">
         <main class="prose main">
           <header class="flex pt-4 pb-6 px-4 space-x-6 justify-between">
@@ -67,7 +68,7 @@
           </footer>
         </main>
       </div>
-      <div class="lg:col-span-2 md:col-span-1"></div>
+      <div class="lg:col-span-2 md:col-span-1 max-sm:hidden"></div>
     </div>
   </body>
 </html>
