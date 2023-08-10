@@ -200,22 +200,20 @@ fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> 
 }
 
 fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
-    let custom = || Constructs {
+    let custom = Constructs {
         frontmatter: true,
         ..Constructs::gfm()
     };
-    let parse_options = || {
-        return ParseOptions {
-            constructs: custom(),
-            ..ParseOptions::gfm()
-        };
+    let parse_options = ParseOptions {
+        constructs: custom,
+        ..ParseOptions::gfm()
     };
-    let options = || Options {
-        parse: parse_options(),
+    let options = Options {
+        parse: parse_options,
         ..Options::gfm()
     };
-    let ast = to_mdast(md, &(parse_options()))?;
-    let html = to_html_with_options(md, &(options()))?;
+    let ast = to_mdast(md, &options.parse)?;
+    let html = to_html_with_options(md, &options)?;
     Ok(ParseMd::Result((ast, html)))
 }
 
