@@ -38,7 +38,6 @@ struct Args {
 fn find_md_files(input_dir: &str) -> Vec<PathBuf> {
     glob(input_dir)
         .expect("Failed to read input_dir")
-        .into_iter()
         .filter_map(|s| s.ok())
         .filter(|s| s.extension().is_some_and(|x| x == "md"))
         .collect()
@@ -53,11 +52,11 @@ fn get_frontmatter_value(ast: &markdown::mdast::Node) -> Option<String> {
     // frontmatter should always be at the front[0]
     match &ast.children()?[0] {
         markdown::mdast::Node::Yaml(yaml) => Some(yaml.value.clone()),
-        _ => return None,
+        _ => None,
     }
 }
 
-fn article_yaml(value: &String, match_on: &str) -> Option<String> {
+fn article_yaml(value: &str, match_on: &str) -> Option<String> {
     let re_string = format!(r"[n]?{}:\s+(.+)[n]?", match_on);
     let re = Regex::new(&re_string).unwrap();
     // re.captures()?[0] contains the matched string
@@ -66,17 +65,17 @@ fn article_yaml(value: &String, match_on: &str) -> Option<String> {
     Some(publish)
 }
 
-fn article_publish(fm_string: &String) -> Option<String> {
+fn article_publish(fm_string: &str) -> Option<String> {
     article_yaml(fm_string, "publish")
 }
-fn article_uuid(fm_string: &String) -> Option<String> {
+fn article_uuid(fm_string: &str) -> Option<String> {
     article_yaml(fm_string, "uuid")
 }
-fn article_date(fm_string: &String) -> Option<String> {
+fn article_date(fm_string: &str) -> Option<String> {
     article_yaml(fm_string, "date")
 }
 
-fn article_title(fm_string: &String) -> Option<String> {
+fn article_title(fm_string: &str) -> Option<String> {
     article_yaml(fm_string, "title")
 }
 
@@ -172,15 +171,15 @@ fn write_index(index: &Index, out_dir: &str) -> Result<PathBuf, Error> {
     path.push(out_dir);
     path.push("html");
     path.push(file_name);
-    let ctx = build_index_context(&index);
+    let ctx = build_index_context(index);
     let html = render_index_template(ctx)?;
-    std::fs::write(&path, &html)?;
+    std::fs::write(&path, html)?;
     Ok(path)
 }
 
 // will write it if all the YAML fns return Ok()
 fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> {
-    if let true = article.publish {
+    if article.publish {
         let file_name = format!("{}.html", article.uuid);
         let mut path = PathBuf::new();
         path.push(out_dir);
@@ -191,7 +190,7 @@ fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> 
         let ctx = build_article_context(&article);
         let html = render_article_template(ctx).expect("Could not render article template");
         // std::fs::write(&path, &article.html)?;
-        std::fs::write(&path, &html)?;
+        std::fs::write(&path, html)?;
         article.written = Some(Written { file_path: path });
         Ok(article)
     } else {
@@ -200,22 +199,20 @@ fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> 
 }
 
 fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
-    let custom = || Constructs {
+    let custom = Constructs {
         frontmatter: true,
         ..Constructs::gfm()
     };
-    let parse_options = || {
-        return ParseOptions {
-            constructs: custom(),
-            ..ParseOptions::gfm()
-        };
+    let parse_options = ParseOptions {
+        constructs: custom,
+        ..ParseOptions::gfm()
     };
-    let options = || Options {
-        parse: parse_options(),
+    let options = Options {
+        parse: parse_options,
         ..Options::gfm()
     };
-    let ast = to_mdast(md, &(parse_options()))?;
-    let html = to_html_with_options(md, &(options()))?;
+    let ast = to_mdast(md, &options.parse)?;
+    let html = to_html_with_options(md, &options)?;
     Ok(ParseMd::Result((ast, html)))
 }
 
@@ -234,8 +231,7 @@ fn main() {
             // read file to memory
             let art = create_article(f).expect("Create article fail");
             // and write it with tera templates
-            let art = write_article(art, &args.output_dir);
-            art
+            write_article(art, &args.output_dir)
         })
         .collect();
     let index = Index { articles };
