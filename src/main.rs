@@ -180,7 +180,7 @@ fn write_index(index: &Index, out_dir: &str) -> Result<PathBuf, Error> {
 
 // will write it if all the YAML fns return Ok()
 fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> {
-    if let true = article.publish {
+    if article.publish {
         let file_name = format!("{}.html", article.uuid);
         let mut path = PathBuf::new();
         path.push(out_dir);
