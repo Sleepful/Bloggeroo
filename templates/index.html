@@ -5,6 +5,9 @@ head %} {{ super() }} {% endblock head %} {% block content %}
 <p class="italic">
   “What is reality? Obviously, no one can say, because it isn’t words.”
 </p>
+<p class="italic">
+  “When you understand a topic, you can explain it with examples. When you understand the student, you can explain it with counter-examples.”
+</p>
 <h2>Blog posts</h2>
 <ul>
   {% for article in articles | sort(attribute="date") | reverse %}
