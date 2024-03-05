@@ -238,11 +238,11 @@ fn main() {
     write_index(&index, &args.output_dir).expect("Could not write index.html");
 
     println!(
-        "Articles created:\n {:?}",
+        "Articles created:\n {:#?}",
         index
             .articles
             .into_iter()
             .map(|a| -> PathBuf { a.written.unwrap().file_path })
-            .collect::<PathBuf>()
-    )
+            .collect::<Vec<PathBuf>>()
+    );
 }
