@@ -12,10 +12,10 @@ head %} {{ super() }} {% endblock head %} {% block content %}
 <ul>
   {% for article in articles | sort(attribute="date") | reverse %}
   <li>
-    <p>
-      {{article.pretty_date}}:
-      <a href="./articles/{{article.uuid}}.html">{{ article.title }}</a>
-    </p>
+    <div class="flex justify-between">
+        <a href="./articles/{{article.uuid}}.html" class="no-underline hover:underline">{{ article.title }}</a>
+          {{article.pretty_date}}
+    </div>
   </li>
   {% endfor %}
   <ul>
