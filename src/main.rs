@@ -12,6 +12,7 @@ use markdown::Constructs;
 use markdown::Options;
 use markdown::ParseOptions;
 use regex::Regex;
+use rss::{ChannelBuilder, Guid, Item, ItemBuilder};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::exit;
@@ -79,16 +80,17 @@ fn article_title(fm_string: &str) -> Option<String> {
     article_yaml(fm_string, "title")
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Written {
     file_path: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Article {
     title: String,
     uuid: String,
     pretty_date: String,
+    rss_date: String,
     date: String,
     publish: bool,
     html: String,
@@ -108,14 +110,23 @@ fn create_article(dir: PathBuf) -> Result<Article, Error> {
     let uuid = article_uuid(&fm).unwrap();
     let title = article_title(&fm).unwrap();
     let publish = article_publish(&fm).unwrap_or_default() == "true";
+    // datetime format() escape sequence:
+    // https://docs.rs/chrono/latest/chrono/format/strftime/index.html
     let pretty_date = NaiveDateTime::parse_from_str(&format!("{} 00:00:00", &date), "%Y-%m-%d %T")
         .unwrap_or_default()
         .format("%Y, %B %e")
+        .to_string();
+    // pubDate for RSS
+    // https://whitep4nth3r.com/blog/how-to-format-dates-for-rss-feeds-rfc-822/
+    let rss_date = NaiveDateTime::parse_from_str(&format!("{} 00:00:00", &date), "%Y-%m-%d %T")
+        .unwrap_or_default()
+        .format("%a, %d %b %Y %T +0000")
         .to_string();
     Ok(Article {
         uuid,
         date,
         pretty_date,
+        rss_date,
         publish,
         title,
         html,
@@ -177,6 +188,41 @@ fn write_index(index: &Index, out_dir: &str) -> Result<PathBuf, Error> {
     Ok(path)
 }
 
+fn write_rss(index: &Index) -> Result<PathBuf, Error> {
+    let items = index
+        .articles
+        .clone()
+        .into_iter()
+        .map(|a| -> Item {
+            let permalink = format!("https://bloggeroo.dev/articles/{}", a.uuid);
+            ItemBuilder::default()
+                .title(Some(a.title))
+                .link(Some(permalink.clone()))
+                .pub_date(Some(a.rss_date))
+                .guid(Some(Guid {
+                    value: permalink.clone(),
+                    permalink: true,
+                }))
+                .build()
+        })
+        .collect::<Vec<Item>>();
+
+    let channel = ChannelBuilder::default()
+        .title("Bloggeroo.dev".to_owned())
+        .link("https://bloggeroo.dev".to_owned())
+        .description("A blog about tech and Software Development.".to_owned())
+        .items(items)
+        .build();
+
+    // println!("{}", channel.to_string());
+    let file_name = "rss.xml";
+    let mut path = PathBuf::new();
+    path.push("html");
+    path.push(file_name);
+    std::fs::write(&path, channel.to_string())?;
+    Ok(path)
+}
+
 // will write it if all the YAML fns return Ok()
 fn write_article(mut article: Article, out_dir: &str) -> Result<Article, Error> {
     if article.publish {
@@ -216,6 +262,18 @@ fn parse_md(md: &str) -> anyhow::Result<ParseMd, String> {
     Ok(ParseMd::Result((ast, html)))
 }
 
+fn print_written_articles(index: &Index) {
+    let all = index
+        .articles
+        .iter()
+        .cloned()
+        // .into_iter()
+        .map(|a| -> PathBuf { a.written.unwrap().file_path })
+        .collect::<Vec<PathBuf>>();
+
+    println!("Articles created:\n {:#?}", all);
+}
+
 fn main() {
     let args = Args::parse();
     // glob
@@ -237,12 +295,7 @@ fn main() {
     let index = Index { articles };
     write_index(&index, &args.output_dir).expect("Could not write index.html");
 
-    println!(
-        "Articles created:\n {:#?}",
-        index
-            .articles
-            .into_iter()
-            .map(|a| -> PathBuf { a.written.unwrap().file_path })
-            .collect::<Vec<PathBuf>>()
-    );
+    print_written_articles(&index);
+    let rss_path = write_rss(&index);
+    println!("Rss file:\n {:#?}", rss_path);
 }

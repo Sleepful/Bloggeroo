@@ -14,11 +14,17 @@
       <div class="lg:col-span-8 md:col-span-10 col-span-full px-2">
         <main class="prose main">
           <header class="flex pt-4 pb-6 px-4 space-x-6 justify-between">
-            <div>
-              {% block home_link %}<a
+            <div class="space-x-6">
+              {% block home_link %}
+              <a
                 href="{% block home_href %}index.html{% endblock home_href %}"
                 class="no-underline hover:underline"
                 >🏠 Home</a
+              >
+              <a
+                href="{% block rss_href %}rss.xml{% endblock rss_href %}"
+                class="no-underline hover:underline ml-"
+                >📳 RSS</a
               >
               {% endblock home_link %}
             </div>

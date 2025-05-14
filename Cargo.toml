@@ -18,3 +18,4 @@ regex = "1.9.3"
 serde = { version = "1.0.183", features = ["derive"] }
 tera = "1.19.0"
 toml = "0.7.6"
+rss = "2.0"

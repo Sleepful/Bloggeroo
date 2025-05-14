@@ -1,5 +1,8 @@
 {% extends "base.html" %} {% block home_link %}{{ super() }}{% endblock
-home_link %} {% block home_href %}../index.html{% endblock home_href %} {% block
+home_link %} 
+{% block home_href %}../index.html{% endblock home_href %} 
+{% block rss_href %}../rss.xml{% endblock rss_href %} 
+{% block
 title %}{{ article.title }}{% endblock title %} {% block head %} {{ super() }}
 <link rel="stylesheet" href="../styles.css" />
 <link
